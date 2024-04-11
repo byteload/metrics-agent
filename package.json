@@ -1,0 +1,16 @@
+{
+  "name": "byteload-agent",
+  "version": "1.0.0",
+  "description": "byteload system metrics exporter",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Valentin Sirbu",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "systeminformation": "^5.22.6"
+  }
+}
