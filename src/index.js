@@ -7,11 +7,12 @@ const app = express();
 
 // Set the port
 const port = process.env.PORT || 3000;
+const endpoint = process.env.ENDPOINT || '/';
 
 // Metrics endpoint
 // This endpoint returns the system data in JSON format
 // The services parameter is a comma-separated list of services to monitor
-app.get('/', async (req, res) => {
+app.get(endpoint, async (req, res) => {
     try {
         const data = await getSystemData({
             services: process.env.SERVICES || 'nginx,mysql',
