@@ -94,14 +94,10 @@ export const getMemoryData = async () => {
         const memData = await mem();
         return {
             total: memData.total,
-            free: memData.free,
-            used: memData.used,
-            active: memData.active,
-            available: memData.available,
+            used: memData.total - memData.available,
             swap_total: memData.swaptotal,
             swap_used: memData.swapused,
-            swap_free: memData.swapfree,
-            used_percent: memData.active / memData.total * 100,
+            used_percent: (memData.total - memData.available) / memData.total * 100,
         };
     } catch (error) {
         console.error("Error getting memory data", error);
