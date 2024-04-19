@@ -25,13 +25,13 @@ const requestListener = async function (req, res) {
         res.writeHead(500);
         res.end(JSON.stringify({
             error: true,
-            message: "Error getting system data",
+            message: error.message || "Error getting system data",
         }));
     }
 }
 
 const server = http.createServer(requestListener);
 
-server.listen(port, null, () => {
+server.listen(port, () => {
     console.log(`Metrics agent running on port ${port}`)
 });
