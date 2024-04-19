@@ -1,35 +1,37 @@
 import 'dotenv/config';
-import express from 'express';
-import { getSystemData } from "./systemService.js";
+import * as http from "node:http";
 
-// Initialize the Express app
-const app = express();
+import { getSystemData } from "./systemService.js";
 
 // Set the port
 const port = process.env.PORT || 3000;
-const endpoint = process.env.ENDPOINT || '/';
 
 // Metrics endpoint
 // This endpoint returns the system data in JSON format
 // The services parameter is a comma-separated list of services to monitor
-app.get(endpoint, async (req, res) => {
+const requestListener = async function (req, res) {
     try {
         const data = await getSystemData({
             services: process.env.SERVICES || 'nginx,mysql',
         });
 
-        res.send(data);
+        res.setHeader('Content-Type', 'application/json');
+        res.writeHead(200);
+        res.end(JSON.stringify(data));
     } catch (error) {
         console.error("Error getting system data", error);
 
-        res.status(500).send({
+        res.setHeader('Content-Type', 'application/json');
+        res.writeHead(500);
+        res.end(JSON.stringify({
             error: true,
             message: "Error getting system data",
-        });
+        }));
     }
-})
+}
 
-// Start the Express app
-app.listen(port, () => {
+const server = http.createServer(requestListener);
+
+server.listen(port, null, () => {
     console.log(`Metrics agent running on port ${port}`)
 });

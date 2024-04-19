@@ -5,13 +5,12 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "node --experimental-vm-modules ./node_modules/.bin/jest --coverage"
+    "start": "node dist/byteload_metrics.js"
   },
   "author": "Valentin Sirbu",
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.4.5",
-    "express": "^4.19.2",
     "systeminformation": "^5.22.6"
   }
 }
