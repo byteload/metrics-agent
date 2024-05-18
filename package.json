@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "start": "node dist/byteload_metrics.js"
+    "start": "node src/index.js"
   },
   "author": "Valentin Sirbu",
   "license": "ISC",
