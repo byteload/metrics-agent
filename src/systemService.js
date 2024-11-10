@@ -1,4 +1,4 @@
-import { osInfo, fsSize, mem, services, currentLoad }   from "systeminformation";
+import {currentLoad, dockerAll, fsSize, mem, osInfo, services, dockerContainers} from "systeminformation";
 
 // Get OS data
 // This function returns an object with the following properties:
@@ -129,6 +129,110 @@ export const getServicesData = async (list) => {
     }
 };
 
+// Get Docker data
+// This function returns an array with the following properties:
+// - id: the container ID
+// - name: the container name
+// - image: the container image
+// - state: the container state
+// - ports: an array with the container ports
+// - platform: the container platform
+// - started_at: the container start time
+// - restarts: the container restart count
+// - mounts: an array with the container mounts
+// - stats: an object with the container stats
+export const getDockerData = async () => {
+    try {
+        return (await dockerAll()).map(container => {
+            return {
+                id: container.id,
+                name: container.name,
+                image: container.image,
+                state: container.state,
+                ports: container.ports.map(port => {
+                    return {
+                        ip: port.IP,
+                        privatePort: port.PrivatePort,
+                        publicPort: port.PublicPort,
+                        type: port.Type,
+                    };
+                }),
+                platform: container.platform,
+                started_at: container.startedAt,
+                restarts: container.restartCount,
+                mounts: container.mounts.map(mount => {
+                    return {
+                        type: mount.Type,
+                        source: mount.Source,
+                        destination: mount.Destination,
+                        mode: mount.Mode,
+                        rw: mount.RW,
+                    };
+                }),
+                stats: {
+                    cpu_percent: container.cpuPercent,
+                    memory_percent: container.memPercent,
+                    memory_usage: container.memUsage,
+                    memory_limit: container.memLimit,
+                    pids: container.pids,
+                }
+            };
+        });
+    } catch (error) {
+        console.error("Error getting Docker data", error);
+
+        return null;
+    }
+};
+
+// Get Docker container data
+// This function returns an array with the following properties:
+// - id: the container ID
+// - name: the container name
+// - image: the container image
+// - state: the container state
+// - ports: an array with the container ports
+// - platform: the container platform
+// - started_at: the container start time
+// - restarts: the container restart count
+// - mounts: an array with the container mounts
+export const getDockerContainersData = async () => {
+    try {
+        return (await dockerContainers()).map(container => {
+            return {
+                id: container.id,
+                name: container.name,
+                image: container.image,
+                state: container.state,
+                ports: container.ports.map(port => {
+                    return {
+                        ip: port.IP,
+                        privatePort: port.PrivatePort,
+                        publicPort: port.PublicPort,
+                        type: port.Type,
+                    };
+                }),
+                platform: container.platform,
+                started_at: container.startedAt,
+                restarts: container.restartCount,
+                mounts: container.mounts.map(mount => {
+                    return {
+                        type: mount.Type,
+                        source: mount.Source,
+                        destination: mount.Destination,
+                        mode: mount.Mode,
+                        rw: mount.RW,
+                    };
+                })
+            };
+        });
+    } catch (error) {
+        console.error("Error getting Docker container data", error);
+
+        return null;
+    }
+};
+
 // Get system data
 // This function returns an object with the following properties:
 // - os: the OS data
@@ -143,5 +247,6 @@ export const getSystemData = async ({ services }) => {
         storage: await getStorageData(),
         memory: await getMemoryData(),
         services: await getServicesData(services),
+        containers: await getDockerContainersData(),
     };
 };
