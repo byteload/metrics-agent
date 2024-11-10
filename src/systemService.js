@@ -207,8 +207,8 @@ export const getDockerContainersData = async () => {
                 ports: container.ports.map(port => {
                     return {
                         ip: port.IP,
-                        privatePort: port.PrivatePort,
-                        publicPort: port.PublicPort,
+                        private_port: port.PrivatePort,
+                        public_port: port.PublicPort,
                         type: port.Type,
                     };
                 }),
