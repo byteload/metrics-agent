@@ -6,11 +6,10 @@ import {getDockerData, getSystemData} from "./systemService.js";
 // Set the port
 const port = process.env.PORT || 3000;
 
-// Metrics endpoint
-// This endpoint returns the system data in JSON format
-// The services parameter is a comma-separated list of services to monitor
 const requestListener = async function (req, res) {
     try {
+        // Docker endpoint
+        // This endpoint returns the Docker data in JSON format
         if (req.url === '/docker') {
             const data = await getDockerData();
             res.setHeader('Content-Type', 'application/json');
@@ -19,6 +18,9 @@ const requestListener = async function (req, res) {
             return;
         }
 
+        // Metrics endpoint
+        // This endpoint returns the system data in JSON format
+        // The services parameter is a comma-separated list of services to monitor
         const data = await getSystemData({
             services: process.env.SERVICES || 'nginx,mysql',
         });
