@@ -30,6 +30,7 @@ func main() {
 	}
 
 	srv := server.New(port)
+
 	log.Printf("Server starting on port %s", port)
 	if err := srv.Start(); err != nil {
 		log.Fatal(err)

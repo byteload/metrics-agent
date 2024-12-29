@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"byteload-agent/pkg/system"
+	"byteload_agent/pkg/system"
 )
 
 // Server represents the HTTP server

@@ -1,0 +1,15 @@
+[Unit]
+Description=Byteload Metrics Agent
+After=network.target
+
+[Service]
+Type=simple
+User=byteload
+Group=byteload
+EnvironmentFile=/etc/byteload/env
+ExecStart=/usr/local/bin/byteload-agent
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target 

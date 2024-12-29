@@ -1,0 +1,84 @@
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: ./cmd/byteload-agent
+    binary: byteload-agent
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+nfpms:
+  - vendor: Byteload
+    homepage: https://github.com/yourusername/metrics-agent-go
+    maintainer: Your Name <your.email@example.com>
+    description: Byteload Metrics Agent
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/local/bin
+    contents:
+      - src: configs/byteload.yaml
+        dst: /etc/byteload/byteload.yaml
+        type: config|noreplace
+      - src: deploy/env.sample
+        dst: /etc/byteload/env
+        type: config|noreplace
+      - src: deploy/byteload.service
+        dst: /lib/systemd/system/byteload.service
+    scripts:
+      postinstall: |
+        #!/bin/sh
+        if ! getent group byteload >/dev/null; then
+          groupadd -r byteload
+        fi
+        if ! getent passwd byteload >/dev/null; then
+          useradd -r -g byteload -s /sbin/nologin -d /var/lib/byteload byteload
+        fi
+        mkdir -p /var/lib/byteload
+        chown -R byteload:byteload /var/lib/byteload /etc/byteload
+        systemctl daemon-reload
+      postremove: |
+        #!/bin/sh
+        if [ "$1" = "remove" ]; then
+          systemctl disable byteload.service || true
+          systemctl stop byteload.service || true
+        fi
+        systemctl daemon-reload
+
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - configs/*
+      - deploy/*
+      - README.md
+      - LICENSE
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^ci:' 
