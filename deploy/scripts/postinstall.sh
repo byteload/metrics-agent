@@ -7,4 +7,6 @@ if ! getent passwd byteload >/dev/null; then
 fi
 mkdir -p /var/lib/byteload
 chown -R byteload:byteload /var/lib/byteload /etc/byteload
-systemctl daemon-reload 
+systemctl daemon-reload
+systemctl enable byteload.service
+systemctl start byteload.service || true 

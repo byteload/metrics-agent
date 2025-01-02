@@ -1,4 +1,4 @@
-module byteload_agent
+module byteload-agent
 
 go 1.21
 

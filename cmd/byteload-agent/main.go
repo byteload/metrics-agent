@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"byteload_agent/internal/server"
+	"byteload-agent/internal/server"
 
 	"github.com/spf13/viper"
 )
@@ -20,16 +20,24 @@ func main() {
 	}
 
 	viper.SetConfigFile(configFile)
-	port := defaultPort
 	if err := viper.ReadInConfig(); err != nil {
-		log.Printf("Warning: Could not read config file: %s, using default port %s", err, defaultPort)
-	} else {
-		if p := viper.GetString("server.port"); p != "" {
-			port = p
-		}
+		log.Printf("Warning: Could not read config file: %s, using defaults", err)
 	}
 
-	srv := server.New(port)
+	port := viper.GetString("server.port")
+	if port == "" {
+		port = defaultPort
+	}
+
+	srv := server.New(server.Config{
+		Port: port,
+		Auth: server.AuthConfig{
+			Enabled:  viper.GetBool("security.basic_auth.enabled"),
+			Username: viper.GetString("security.basic_auth.username"),
+			Password: viper.GetString("security.basic_auth.password"),
+		},
+	})
+
 	log.Printf("Server starting on port %s", port)
 	if err := srv.Start(); err != nil {
 		log.Fatal(err)

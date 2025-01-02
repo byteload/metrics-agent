@@ -1,6 +1,10 @@
 [Unit]
 Description=Byteload Metrics Agent
+Documentation=https://github.com/yourusername/metrics-agent-go
 After=network.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
 
 [Service]
 Type=simple

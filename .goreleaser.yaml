@@ -22,7 +22,7 @@ nfpms:
   - vendor: Byteload
     homepage: https://github.com/yourusername/metrics-agent-go
     maintainer: Your Name <your.email@example.com>
-    description: Byteload Metrics Agent
+    description: byteload Metrics Agent
     license: MIT
     formats:
       - deb
