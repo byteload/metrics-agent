@@ -1,8 +1,23 @@
 server:
   port: "9001"
+  host: "0.0.0.0"
+
+logging:
+  level: "info"
+  format: "json"
+
+metrics:
+  enabled: true
+  endpoint: "/metrics"
 
 security:
   basic_auth:
-    enabled: true
+    enabled: false
     username: "metrics"
-    password: "change-me-in-production" 
+    password: "change-me-in-production"
+
+services:
+  default:
+    - "nginx"
+    - "mysql"
+    - "php"

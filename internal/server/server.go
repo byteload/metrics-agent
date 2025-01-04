@@ -8,16 +8,34 @@ import (
 	"byteload-agent/pkg/system"
 )
 
+var Version = "dev"
+
 // Config holds the server configuration
 type Config struct {
-	Port string
-	Auth AuthConfig
+	Port     string
+	Auth     AuthConfig
+	Services ServicesConfig
 }
 
 type AuthConfig struct {
 	Enabled  bool
 	Username string
 	Password string
+}
+
+type ServicesConfig struct {
+	Default []string
+}
+
+// MetaData represents metadata about the response
+type MetaData struct {
+	Version string `json:"version"`
+}
+
+// Response wraps any response data with metadata
+type Response struct {
+	Meta MetaData    `json:"meta"`
+	Data interface{} `json:"data"`
 }
 
 // Server represents the HTTP server
@@ -28,7 +46,7 @@ type Server struct {
 // New creates a new server instance
 func New(config Config) *Server {
 	if config.Port == "" {
-		config.Port = "3000"
+		config.Port = "9001"
 	}
 	return &Server{config: config}
 }
@@ -70,20 +88,32 @@ func jsonResponse(w http.ResponseWriter, data interface{}, err error) {
 		return
 	}
 
+	response := Response{
+		Meta: MetaData{
+			Version: Version,
+		},
+		Data: data,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	json.NewEncoder(w).Encode(response)
+}
+
+// getRequestedServices returns services from query param or defaults if not specified
+func (s *Server) getRequestedServices(r *http.Request) []string {
+	if servicesParam := r.URL.Query().Get("services"); servicesParam != "" {
+		var services []string
+		if err := json.Unmarshal([]byte(servicesParam), &services); err == nil {
+			return services
+		}
+	}
+	return s.config.Services.Default
 }
 
 // setupRoutes configures all HTTP routes
 func (s *Server) setupRoutes() {
-	http.HandleFunc("/system", s.basicAuth(func(w http.ResponseWriter, r *http.Request) {
-		var services []string
-		if servicesParam := r.URL.Query().Get("services"); servicesParam != "" {
-			if err := json.Unmarshal([]byte(servicesParam), &services); err != nil {
-				jsonResponse(w, nil, err)
-				return
-			}
-		}
+	http.HandleFunc("/", s.basicAuth(func(w http.ResponseWriter, r *http.Request) {
+		services := s.getRequestedServices(r)
 		data, err := system.GetSystemData(services)
 		jsonResponse(w, data, err)
 	}))
@@ -109,13 +139,7 @@ func (s *Server) setupRoutes() {
 	}))
 
 	http.HandleFunc("/services", s.basicAuth(func(w http.ResponseWriter, r *http.Request) {
-		var services []string
-		if servicesParam := r.URL.Query().Get("services"); servicesParam != "" {
-			if err := json.Unmarshal([]byte(servicesParam), &services); err != nil {
-				jsonResponse(w, nil, err)
-				return
-			}
-		}
+		services := s.getRequestedServices(r)
 		data, err := system.GetServicesData(services)
 		jsonResponse(w, data, err)
 	}))

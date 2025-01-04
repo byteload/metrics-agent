@@ -55,15 +55,6 @@ sudo systemctl daemon-reload
 ```yaml
 server:
   port: "9001"
-  host: "0.0.0.0"
-
-logging:
-  level: "info"
-  format: "json"
-
-metrics:
-  enabled: true
-  endpoint: "/metrics"
 
 security:
   basic_auth:

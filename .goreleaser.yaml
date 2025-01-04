@@ -16,7 +16,7 @@ builds:
     main: ./cmd/byteload-agent
     binary: byteload-agent
     ldflags:
-      - -s -w -X main.version={{.Version}}
+      - -s -w -X main.version={{.Version}} -X byteload_agent/internal/server.Version={{.Version}}
 
 nfpms:
   - vendor: Byteload

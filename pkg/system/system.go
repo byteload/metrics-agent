@@ -11,12 +11,13 @@ import (
 
 // OSData represents operating system information
 type OSData struct {
-	Platform string `json:"platform"`
-	Distro   string `json:"distro"`
-	Release  string `json:"release"`
-	Codename string `json:"codename"`
-	Kernel   string `json:"kernel"`
-	Arch     string `json:"arch"`
+	Platform       string `json:"platform"`
+	Distro         string `json:"distro"`
+	Release        string `json:"release"`
+	Codename       string `json:"codename"`
+	Kernel         string `json:"kernel"`
+	Arch           string `json:"arch"`
+	PlatformFamily string `json:"family"`
 }
 
 // GetOSData returns operating system information
@@ -27,11 +28,12 @@ func GetOSData() (*OSData, error) {
 	}
 
 	return &OSData{
-		Platform: info.Platform,
-		Distro:   info.PlatformFamily,
-		Release:  info.PlatformVersion,
-		Kernel:   info.KernelVersion,
-		Arch:     info.KernelArch,
+		Platform:       info.Platform,
+		Distro:         info.PlatformFamily,
+		Release:        info.PlatformVersion,
+		Kernel:         info.KernelVersion,
+		Arch:           info.KernelArch,
+		PlatformFamily: info.PlatformFamily,
 	}, nil
 }
 
@@ -128,12 +130,17 @@ func GetMemoryData() (*MemoryData, error) {
 		return nil, err
 	}
 
+	// Calculate actual used memory by subtracting cached, buffers and shared memory
+	// This better matches what htop shows as "used" memory
+	actualUsed := vm.Used - (vm.Buffers + vm.Cached + vm.Shared)
+	actualUsedPercent := float64(actualUsed) / float64(vm.Total) * 100
+
 	return &MemoryData{
 		Total:       vm.Total,
-		Used:        vm.Used,
+		Used:        actualUsed,
 		SwapTotal:   swap.Total,
 		SwapUsed:    swap.Used,
-		UsedPercent: vm.UsedPercent,
+		UsedPercent: actualUsedPercent,
 	}, nil
 }
 
@@ -152,7 +159,18 @@ func GetServicesData(serviceNames []string) ([]ServiceData, error) {
 		return nil, err
 	}
 
-	var services []ServiceData
+	// Initialize map with all requested services as not running
+	serviceMap := make(map[string]*ServiceData)
+	for _, name := range serviceNames {
+		serviceMap[name] = &ServiceData{
+			Name:    name,
+			Running: false,
+			CPU:     0,
+			Mem:     0,
+		}
+	}
+
+	// Update service data for running processes
 	for _, proc := range processes {
 		name, err := proc.Name()
 		if err != nil {
@@ -160,27 +178,24 @@ func GetServicesData(serviceNames []string) ([]ServiceData, error) {
 		}
 
 		// Check if the process name is in the requested services list
-		found := false
-		for _, serviceName := range serviceNames {
-			if name == serviceName {
-				found = true
-				break
-			}
-		}
-		if !found {
+		service, exists := serviceMap[name]
+		if !exists {
 			continue
 		}
 
 		cpu, _ := proc.CPUPercent()
 		mem, _ := proc.MemoryPercent()
-		status, _ := proc.Status()
 
-		services = append(services, ServiceData{
-			Name:    name,
-			Running: len(status) > 0 && status[0] == "running",
-			CPU:     cpu,
-			Mem:     mem,
-		})
+		// Update service data
+		service.Running = true
+		service.CPU += cpu
+		service.Mem += mem
+	}
+
+	// Convert map to slice
+	var services []ServiceData
+	for _, service := range serviceMap {
+		services = append(services, *service)
 	}
 
 	return services, nil

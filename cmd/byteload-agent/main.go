@@ -9,11 +9,17 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Version is set during build
+var version = "dev"
+
 const (
 	defaultPort = "9001"
 )
 
 func main() {
+	// Set version in server package
+	server.Version = version
+
 	configFile := os.Getenv("BYTELOAD_CONFIG_FILE")
 	if configFile == "" {
 		configFile = "/etc/byteload/byteload.yaml"
@@ -36,9 +42,12 @@ func main() {
 			Username: viper.GetString("security.basic_auth.username"),
 			Password: viper.GetString("security.basic_auth.password"),
 		},
+		Services: server.ServicesConfig{
+			Default: viper.GetStringSlice("services.default"),
+		},
 	})
 
-	log.Printf("Server starting on port %s", port)
+	log.Printf("Starting Byteload Agent version %s on port %s", version, port)
 	if err := srv.Start(); err != nil {
 		log.Fatal(err)
 	}
