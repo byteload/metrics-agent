@@ -1,12 +1,24 @@
 package system
 
 import (
+	"context"
+	"encoding/json"
+	"sync"
+	"time"
+
+	"github.com/docker/docker/api/types"
+	dockerContainer "github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
-	"github.com/shirou/gopsutil/v3/docker"
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 	"github.com/shirou/gopsutil/v3/process"
+)
+
+var (
+	dockerStatsCache     []DockerContainerData
+	dockerStatsCacheLock sync.RWMutex
 )
 
 // OSData represents operating system information
@@ -241,36 +253,185 @@ type Stats struct {
 	PIDs          int     `json:"pids"`
 }
 
-// GetDockerContainersData returns information about Docker containers
-func GetDockerContainersData() ([]DockerContainerData, error) {
-	containers, err := docker.GetDockerStat()
+// StartDockerStatsCollector starts collecting Docker stats in the background
+func StartDockerStatsCollector(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				stats, err := collectDockerStats()
+				if err != nil {
+					continue
+				}
+
+				dockerStatsCacheLock.Lock()
+				dockerStatsCache = stats
+				dockerStatsCacheLock.Unlock()
+			}
+		}
+	}()
+}
+
+// collectDockerStats collects Docker container stats
+func collectDockerStats() ([]DockerContainerData, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return nil, err
+	}
+	defer cli.Close()
+
+	containers, err := cli.ContainerList(ctx, dockerContainer.ListOptions{All: true})
 	if err != nil {
 		return nil, err
 	}
 
-	var containersData []DockerContainerData
+	// Create a channel to receive container data
+	containersChan := make(chan DockerContainerData, len(containers))
+	// Create a WaitGroup to wait for all goroutines to finish
+	var wg sync.WaitGroup
+
+	// Process each container in parallel
 	for _, container := range containers {
-		containersData = append(containersData, DockerContainerData{
-			ID:        container.ContainerID,
-			Name:      container.Name,
-			Image:     container.Image,
-			State:     container.Status,
-			Platform:  "linux", // Docker containers typically run on Linux
-			StartedAt: "-",     // Not available in current gopsutil version
-		})
+		wg.Add(1)
+		go func(container types.Container) {
+			defer wg.Done()
+
+			containerData := DockerContainerData{
+				ID:        container.ID[:12],
+				Name:      container.Names[0][1:],
+				Image:     container.Image,
+				State:     container.State,
+				Platform:  "linux",
+				StartedAt: time.Unix(container.Created, 0).Format(time.RFC3339),
+				Ports:     make([]Port, 0, len(container.Ports)),
+				Mounts:    make([]Mount, 0, len(container.Mounts)),
+			}
+
+			for _, p := range container.Ports {
+				containerData.Ports = append(containerData.Ports, Port{
+					IP:          p.IP,
+					PrivatePort: p.PrivatePort,
+					PublicPort:  p.PublicPort,
+					Type:        p.Type,
+				})
+			}
+
+			for _, m := range container.Mounts {
+				containerData.Mounts = append(containerData.Mounts, Mount{
+					Type:        string(m.Type),
+					Source:      m.Source,
+					Destination: m.Destination,
+					Mode:        m.Mode,
+					RW:          m.RW,
+				})
+			}
+
+			// Only fetch stats for running containers
+			if container.State == "running" {
+				// Create a new client for each goroutine to ensure thread safety
+				cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+				if err == nil {
+					defer cli.Close()
+
+					stats, err := cli.ContainerStats(ctx, container.ID, false)
+					if err == nil {
+						var statsJSON dockerContainer.StatsResponse
+						if err := json.NewDecoder(stats.Body).Decode(&statsJSON); err == nil {
+							memPercent := float64(0)
+							if statsJSON.MemoryStats.Limit != 0 {
+								memPercent = float64(statsJSON.MemoryStats.Usage) / float64(statsJSON.MemoryStats.Limit) * 100
+							}
+
+							containerData.Stats = &Stats{
+								CPUPercent:    calculateCPUPercent(&statsJSON),
+								MemoryPercent: memPercent,
+								MemoryUsage:   statsJSON.MemoryStats.Usage,
+								MemoryLimit:   statsJSON.MemoryStats.Limit,
+								PIDs:          int(statsJSON.PidsStats.Current),
+							}
+						}
+						stats.Body.Close()
+					}
+				}
+			} else {
+				// Set zero stats for non-running containers
+				containerData.Stats = &Stats{
+					CPUPercent:    0,
+					MemoryPercent: 0,
+					MemoryUsage:   0,
+					MemoryLimit:   0,
+					PIDs:          0,
+				}
+			}
+
+			containersChan <- containerData
+		}(container)
+	}
+
+	// Start a goroutine to close the channel when all workers are done
+	go func() {
+		wg.Wait()
+		close(containersChan)
+	}()
+
+	// Collect results from the channel
+	containersData := make([]DockerContainerData, 0, len(containers))
+	for containerData := range containersChan {
+		containersData = append(containersData, containerData)
 	}
 
 	return containersData, nil
 }
 
+// GetDockerContainersData returns cached Docker container information
+func GetDockerContainersData() ([]DockerContainerData, error) {
+	dockerStatsCacheLock.RLock()
+	defer dockerStatsCacheLock.RUnlock()
+
+	if dockerStatsCache == nil {
+		// If cache is not initialized yet, collect stats immediately
+		stats, err := collectDockerStats()
+		if err != nil {
+			return nil, err
+		}
+		return stats, nil
+	}
+
+	// Return a copy of the cache to prevent data races
+	result := make([]DockerContainerData, len(dockerStatsCache))
+	copy(result, dockerStatsCache)
+	return result, nil
+}
+
+// calculateCPUPercent calculates CPU usage percentage
+func calculateCPUPercent(stats *dockerContainer.StatsResponse) float64 {
+	var cpuPercent float64
+	if stats.CPUStats.SystemUsage != 0 {
+		cpuDelta := float64(stats.CPUStats.CPUUsage.TotalUsage - stats.PreCPUStats.CPUUsage.TotalUsage)
+		systemDelta := float64(stats.CPUStats.SystemUsage - stats.PreCPUStats.SystemUsage)
+
+		if systemDelta > 0 && cpuDelta > 0 {
+			cpuPercent = (cpuDelta / systemDelta) * float64(len(stats.CPUStats.CPUUsage.PercpuUsage)) * 100
+		}
+	}
+	return cpuPercent
+}
+
 // SystemData represents complete system information
 type SystemData struct {
-	OS         *OSData               `json:"os"`
-	CPU        *CPUData              `json:"cpu"`
-	Storage    *StorageData          `json:"storage"`
-	Memory     *MemoryData           `json:"memory"`
-	Services   []ServiceData         `json:"services"`
-	Containers []DockerContainerData `json:"containers"`
+	OS       *OSData       `json:"os"`
+	CPU      *CPUData      `json:"cpu"`
+	Storage  *StorageData  `json:"storage"`
+	Memory   *MemoryData   `json:"memory"`
+	Services []ServiceData `json:"services"`
 }
 
 // GetSystemData returns complete system information

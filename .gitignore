@@ -5,6 +5,7 @@
 *.so
 *.dylib
 /byteload-agent
+/byteload_agent
 
 # Test binary, built with `go test -c`
 *.test

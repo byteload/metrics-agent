@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"net/http"
@@ -41,6 +42,8 @@ type Response struct {
 // Server represents the HTTP server
 type Server struct {
 	config Config
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // New creates a new server instance
@@ -48,7 +51,12 @@ func New(config Config) *Server {
 	if config.Port == "" {
 		config.Port = "9001"
 	}
-	return &Server{config: config}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Server{
+		config: config,
+		ctx:    ctx,
+		cancel: cancel,
+	}
 }
 
 // basicAuth middleware for HTTP basic authentication
@@ -153,5 +161,12 @@ func (s *Server) setupRoutes() {
 // Start starts the HTTP server
 func (s *Server) Start() error {
 	s.setupRoutes()
+
+	// Start Docker stats collector
+	system.StartDockerStatsCollector(s.ctx)
+
+	// Clean up when server stops
+	defer s.cancel()
+
 	return http.ListenAndServe(":"+s.config.Port, nil)
 }
