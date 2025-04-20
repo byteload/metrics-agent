@@ -120,7 +120,7 @@ Requirements:
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/metrics-agent-go
+git clone https://github.com/byteload/metrics-agent-go
 cd metrics-agent-go
 
 # Build
