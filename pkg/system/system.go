@@ -142,17 +142,16 @@ func GetMemoryData() (*MemoryData, error) {
 		return nil, err
 	}
 
-	// Calculate actual used memory by subtracting cached, buffers and shared memory
-	// This better matches what htop shows as "used" memory
-	actualUsed := vm.Used - (vm.Buffers + vm.Cached + vm.Shared)
-	actualUsedPercent := float64(actualUsed) / float64(vm.Total) * 100
+	// Calculate memory usage percentage directly from the virtual memory stats
+	// This matches what most system monitors show
+	usedPercent := (float64(vm.Used) / float64(vm.Total)) * 100.0
 
 	return &MemoryData{
 		Total:       vm.Total,
-		Used:        actualUsed,
+		Used:        vm.Used,
 		SwapTotal:   swap.Total,
 		SwapUsed:    swap.Used,
-		UsedPercent: actualUsedPercent,
+		UsedPercent: usedPercent,
 	}, nil
 }
 
