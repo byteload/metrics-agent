@@ -20,4 +20,6 @@ services:
   default:
     - "nginx"
     - "mysql"
-    - "php"
+    - "php-fpm: master process"
+    - "php-fpm: pool valet"
+    - "/opt/homebrew/opt/php@7.4/sbin/php-fpm"

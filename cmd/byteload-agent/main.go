@@ -47,7 +47,7 @@ func main() {
 		},
 	})
 
-	log.Printf("Starting Byteload Agent version %s on port %s", version, port)
+	log.Printf("Starting byteload agent version %s on port %s", version, port)
 	if err := srv.Start(); err != nil {
 		log.Fatal(err)
 	}

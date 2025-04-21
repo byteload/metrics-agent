@@ -250,6 +250,16 @@ type Stats struct {
 	MemoryUsage   uint64  `json:"memory_usage"`
 	MemoryLimit   uint64  `json:"memory_limit"`
 	PIDs          int     `json:"pids"`
+	NetworkIO     struct {
+		RxBytes   uint64 `json:"rx_bytes"`
+		RxPackets uint64 `json:"rx_packets"`
+		TxBytes   uint64 `json:"tx_bytes"`
+		TxPackets uint64 `json:"tx_packets"`
+	} `json:"network_io"`
+	BlockIO struct {
+		ReadBytes  uint64 `json:"read_bytes"`
+		WriteBytes uint64 `json:"write_bytes"`
+	} `json:"block_io"`
 }
 
 // StartDockerStatsCollector starts collecting Docker stats in the background
@@ -355,6 +365,24 @@ func collectDockerStats() ([]DockerContainerData, error) {
 								MemoryUsage:   statsJSON.MemoryStats.Usage,
 								MemoryLimit:   statsJSON.MemoryStats.Limit,
 								PIDs:          int(statsJSON.PidsStats.Current),
+								NetworkIO: struct {
+									RxBytes   uint64 `json:"rx_bytes"`
+									RxPackets uint64 `json:"rx_packets"`
+									TxBytes   uint64 `json:"tx_bytes"`
+									TxPackets uint64 `json:"tx_packets"`
+								}{
+									RxBytes:   statsJSON.Networks["eth0"].RxBytes,
+									RxPackets: statsJSON.Networks["eth0"].RxPackets,
+									TxBytes:   statsJSON.Networks["eth0"].TxBytes,
+									TxPackets: statsJSON.Networks["eth0"].TxPackets,
+								},
+								BlockIO: struct {
+									ReadBytes  uint64 `json:"read_bytes"`
+									WriteBytes uint64 `json:"write_bytes"`
+								}{
+									ReadBytes:  calculateBlkioReadBytes(statsJSON.BlkioStats.IoServiceBytesRecursive),
+									WriteBytes: calculateBlkioWriteBytes(statsJSON.BlkioStats.IoServiceBytesRecursive),
+								},
 							}
 						}
 						stats.Body.Close()
@@ -368,6 +396,16 @@ func collectDockerStats() ([]DockerContainerData, error) {
 					MemoryUsage:   0,
 					MemoryLimit:   0,
 					PIDs:          0,
+					NetworkIO: struct {
+						RxBytes   uint64 `json:"rx_bytes"`
+						RxPackets uint64 `json:"rx_packets"`
+						TxBytes   uint64 `json:"tx_bytes"`
+						TxPackets uint64 `json:"tx_packets"`
+					}{},
+					BlockIO: struct {
+						ReadBytes  uint64 `json:"read_bytes"`
+						WriteBytes uint64 `json:"write_bytes"`
+					}{},
 				}
 			}
 
@@ -422,6 +460,28 @@ func calculateCPUPercent(stats *dockerContainer.StatsResponse) float64 {
 		}
 	}
 	return cpuPercent
+}
+
+// calculateBlkioReadBytes calculates total read bytes from BlkioStats
+func calculateBlkioReadBytes(stats []dockerContainer.BlkioStatEntry) uint64 {
+	var total uint64
+	for _, stat := range stats {
+		if stat.Op == "Read" {
+			total += stat.Value
+		}
+	}
+	return total
+}
+
+// calculateBlkioWriteBytes calculates total write bytes from BlkioStats
+func calculateBlkioWriteBytes(stats []dockerContainer.BlkioStatEntry) uint64 {
+	var total uint64
+	for _, stat := range stats {
+		if stat.Op == "Write" {
+			total += stat.Value
+		}
+	}
+	return total
 }
 
 // SystemData represents complete system information
