@@ -286,6 +286,55 @@ func StartDockerStatsCollector(ctx context.Context) {
 	}()
 }
 
+// calculateCPUPercent calculates CPU usage percentage
+func calculateCPUPercent(stats *dockerContainer.StatsResponse) float64 {
+	var cpuPercent float64
+	if stats.CPUStats.SystemUsage != 0 {
+		// Get CPU usage in nanoseconds
+		cpuDelta := float64(stats.CPUStats.CPUUsage.TotalUsage - stats.PreCPUStats.CPUUsage.TotalUsage)
+		systemDelta := float64(stats.CPUStats.SystemUsage - stats.PreCPUStats.SystemUsage)
+
+		// Calculate number of CPUs
+		cpuCount := float64(len(stats.CPUStats.CPUUsage.PercpuUsage))
+		if cpuCount == 0 {
+			cpuCount = 1 // Fallback to 1 CPU if we can't determine the count
+		}
+
+		if systemDelta > 0 && cpuDelta > 0 {
+			// Calculate CPU percentage
+			cpuPercent = (cpuDelta / systemDelta) * cpuCount * 100.0
+
+			// Round to 2 decimal places
+			cpuPercent = float64(int(cpuPercent*100)) / 100
+		}
+	}
+	return cpuPercent
+}
+
+// calculateBlkioReadBytes calculates total read bytes from BlkioStats
+func calculateBlkioReadBytes(stats []dockerContainer.BlkioStatEntry) uint64 {
+	var total uint64
+	for _, stat := range stats {
+		if stat.Op == "Read" || stat.Op == "read" {
+			total += stat.Value
+		}
+	}
+
+	return total
+}
+
+// calculateBlkioWriteBytes calculates total write bytes from BlkioStats
+func calculateBlkioWriteBytes(stats []dockerContainer.BlkioStatEntry) uint64 {
+	var total uint64
+	for _, stat := range stats {
+		if stat.Op == "Write" || stat.Op == "write" {
+			total += stat.Value
+		}
+	}
+
+	return total
+}
+
 // collectDockerStats collects Docker container stats
 func collectDockerStats() ([]DockerContainerData, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -359,8 +408,10 @@ func collectDockerStats() ([]DockerContainerData, error) {
 								memPercent = float64(statsJSON.MemoryStats.Usage) / float64(statsJSON.MemoryStats.Limit) * 100
 							}
 
+							cpuPercent := calculateCPUPercent(&statsJSON)
+
 							containerData.Stats = &Stats{
-								CPUPercent:    calculateCPUPercent(&statsJSON),
+								CPUPercent:    cpuPercent,
 								MemoryPercent: memPercent,
 								MemoryUsage:   statsJSON.MemoryStats.Usage,
 								MemoryLimit:   statsJSON.MemoryStats.Limit,
@@ -446,44 +497,6 @@ func GetDockerContainersData() ([]DockerContainerData, error) {
 	result := make([]DockerContainerData, len(dockerStatsCache))
 	copy(result, dockerStatsCache)
 	return result, nil
-}
-
-// calculateCPUPercent calculates CPU usage percentage
-func calculateCPUPercent(stats *dockerContainer.StatsResponse) float64 {
-	var cpuPercent float64
-	if stats.CPUStats.SystemUsage != 0 {
-		cpuDelta := float64(stats.CPUStats.CPUUsage.TotalUsage - stats.PreCPUStats.CPUUsage.TotalUsage)
-		systemDelta := float64(stats.CPUStats.SystemUsage - stats.PreCPUStats.SystemUsage)
-
-		if systemDelta > 0 && cpuDelta > 0 {
-			cpuPercent = (cpuDelta / systemDelta) * float64(len(stats.CPUStats.CPUUsage.PercpuUsage)) * 100
-		}
-	}
-	return cpuPercent
-}
-
-// calculateBlkioReadBytes calculates total read bytes from BlkioStats
-func calculateBlkioReadBytes(stats []dockerContainer.BlkioStatEntry) uint64 {
-	var total uint64
-	for _, stat := range stats {
-		if stat.Op == "Read" || stat.Op == "read" {
-			total += stat.Value
-		}
-	}
-
-	return total
-}
-
-// calculateBlkioWriteBytes calculates total write bytes from BlkioStats
-func calculateBlkioWriteBytes(stats []dockerContainer.BlkioStatEntry) uint64 {
-	var total uint64
-	for _, stat := range stats {
-		if stat.Op == "Write" || stat.Op == "write" {
-			total += stat.Value
-		}
-	}
-
-	return total
 }
 
 // SystemData represents complete system information
