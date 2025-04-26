@@ -466,10 +466,11 @@ func calculateCPUPercent(stats *dockerContainer.StatsResponse) float64 {
 func calculateBlkioReadBytes(stats []dockerContainer.BlkioStatEntry) uint64 {
 	var total uint64
 	for _, stat := range stats {
-		if stat.Op == "Read" {
+		if stat.Op == "Read" || stat.Op == "read" {
 			total += stat.Value
 		}
 	}
+
 	return total
 }
 
@@ -477,10 +478,11 @@ func calculateBlkioReadBytes(stats []dockerContainer.BlkioStatEntry) uint64 {
 func calculateBlkioWriteBytes(stats []dockerContainer.BlkioStatEntry) uint64 {
 	var total uint64
 	for _, stat := range stats {
-		if stat.Op == "Write" {
+		if stat.Op == "Write" || stat.Op == "write" {
 			total += stat.Value
 		}
 	}
+
 	return total
 }
 
