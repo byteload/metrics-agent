@@ -18,14 +18,14 @@ A lightweight system metrics collection agent written in Go that exposes system 
 #### DEB-based systems (Debian/Ubuntu):
 ```bash
 # Download the latest .deb package
-curl -L https://github.com/byteload/metrics-agent/releases/latest/download/byteload-agent_linux_amd64.deb -o byteload-agent.deb
+curl -L https://github.com/byteload/metrics-agent/releases/latest/download/metrics-agent_0.2.2_linux_amd64.deb -o byteload-agent.deb
 sudo dpkg -i byteload-agent.deb
 ```
 
 #### RPM-based systems (RHEL/CentOS):
 ```bash
 # Download the latest .rpm package
-curl -L https://github.com/byteload/metrics-agent/releases/latest/download/byteload-agent_linux_amd64.rpm -o byteload-agent.rpm
+curl -L https://github.com/byteload/metrics-agent/releases/latest/download/metrics-agent_0.2.2_linux_amd64.rpm -o byteload-agent.rpm
 sudo rpm -i byteload-agent.rpm
 ```
 
@@ -34,10 +34,10 @@ sudo rpm -i byteload-agent.rpm
 1. Download the latest release for your platform:
 ```bash
 # For Linux
-curl -L https://github.com/byteload/metrics-agent/releases/latest/download/byteload-agent_linux_amd64.tar.gz -o byteload-agent.tar.gz
+curl -L https://github.com/byteload/metrics-agent/releases/latest/download/metrics-agent_0.2.2_linux_amd64.tar.gz -o byteload-agent.tar.gz
 
 # For macOS
-curl -L https://github.com/byteload/metrics-agent/releases/latest/download/byteload-agent_darwin_amd64.tar.gz -o byteload-agent.tar.gz
+curl -L https://github.com/byteload/metrics-agent/releases/latest/download/metrics-agent_0.2.2_darwin_amd64.tar.gz -o byteload-agent.tar.gz
 ```
 
 2. Extract the archive:
