@@ -17,31 +17,46 @@ A lightweight system metrics collection agent written in Go that exposes system 
 
 #### DEB-based systems (Debian/Ubuntu):
 ```bash
-sudo dpkg -i byteload-agent_*.deb
+# Download the latest .deb package
+curl -L https://github.com/byteload/metrics-agent/releases/latest/download/byteload-agent_linux_amd64.deb -o byteload-agent.deb
+sudo dpkg -i byteload-agent.deb
 ```
 
 #### RPM-based systems (RHEL/CentOS):
 ```bash
-sudo rpm -i byteload-agent_*.rpm
+# Download the latest .rpm package
+curl -L https://github.com/byteload/metrics-agent/releases/latest/download/byteload-agent_linux_amd64.rpm -o byteload-agent.rpm
+sudo rpm -i byteload-agent.rpm
 ```
 
 ### Manual Installation
 
-1. Download the latest release for your platform
+1. Download the latest release for your platform:
+```bash
+# For Linux
+curl -L https://github.com/byteload/metrics-agent/releases/latest/download/byteload-agent_linux_amd64.tar.gz -o byteload-agent.tar.gz
+
+# For macOS
+curl -L https://github.com/byteload/metrics-agent/releases/latest/download/byteload-agent_darwin_amd64.tar.gz -o byteload-agent.tar.gz
+```
+
 2. Extract the archive:
 ```bash
-tar xzf byteload-agent_*.tar.gz
+tar xzf byteload-agent.tar.gz
 ```
+
 3. Copy the binary:
 ```bash
 sudo cp byteload-agent /usr/local/bin/
 ```
+
 4. Copy configuration:
 ```bash
 sudo mkdir -p /etc/byteload
 sudo cp configs/byteload.yaml /etc/byteload/
 sudo cp deploy/env.sample /etc/byteload/env
 ```
+
 5. Install service:
 ```bash
 sudo cp deploy/byteload.service /lib/systemd/system/
@@ -120,8 +135,8 @@ Requirements:
 
 ```bash
 # Clone repository
-git clone https://github.com/byteload/metrics-agent-go
-cd metrics-agent-go
+git clone https://github.com/byteload/metrics-agent
+cd metrics-agent
 
 # Build
 go build -o byteload-agent ./cmd/byteload-agent
